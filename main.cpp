@@ -8,6 +8,7 @@
 #include <chrono>
 #include <fstream>
 #include <sstream>
+#include <unordered_set>
 
 #ifdef _WIN32
 #include <direct.h>
@@ -89,6 +90,76 @@ void initColors() {
     init_pair(4, COLOR_BLACK, COLOR_WHITE);  // Black text on grey background (menu items)
     init_pair(5, COLOR_WHITE, COLOR_RED);    // White text on red background (highlight)
     init_pair(6, COLOR_BLACK, COLOR_BLUE);   // Black text on blue background (bottom menu)
+    init_pair(7, COLOR_YELLOW, COLOR_WHITE); // Yellow text (for keywords)
+    init_pair(8, COLOR_MAGENTA, COLOR_WHITE);// Magenta text (for strings)
+    init_pair(9, COLOR_GREEN, COLOR_WHITE);  // Green text (for comments)
+    init_pair(10, COLOR_CYAN, COLOR_WHITE);  // Cyan text (for numbers)
+}
+
+std::unordered_set<std::string> cppKeywords = {
+    "int", "float", "double", "char", "bool", "void", "if", "else", "for", "while", "do", 
+    "switch", "case", "default", "break", "continue", "return", "true", "false", "class", 
+    "struct", "namespace", "public", "private", "protected", "virtual", "override", "const",
+    "static", "template", "typename", "include", "iostream", "using", "std", "new", "delete",
+    "try", "catch", "throw"
+};
+
+void highlightSyntax(WINDOW* win, const std::string& line, int line_num) {
+    int x = 2; // Starting x position for the text
+    std::string word;
+    for (size_t i = 0; i < line.length(); ++i) {
+        char ch = line[i];
+        if (isspace(ch) || ispunct(ch)) {
+            if (!word.empty()) {
+                if (cppKeywords.find(word) != cppKeywords.end()) {
+                    wattron(win, COLOR_PAIR(7)); // Highlight keywords in yellow
+                } else if (std::regex_match(word, std::regex("^[0-9]+$"))) {
+                    wattron(win, COLOR_PAIR(10)); // Highlight numbers in cyan
+                } else {
+                    wattron(win, COLOR_PAIR(4)); // Default color
+                }
+                mvwprintw(win, line_num, x, "%s", word.c_str());
+                wattroff(win, COLOR_PAIR(7));
+                wattroff(win, COLOR_PAIR(10));
+                word.clear();
+            }
+            if (ch == '/' && i + 1 < line.length() && line[i + 1] == '/') {
+                wattron(win, COLOR_PAIR(9)); // Highlight comments in green
+                mvwprintw(win, line_num, x, "%s", line.substr(i).c_str());
+                wattroff(win, COLOR_PAIR(9));
+                break;
+            } else if (ch == '"') {
+                size_t end_pos = line.find('"', i + 1);
+                if (end_pos == std::string::npos) {
+                    end_pos = line.length() - 1;
+                }
+                wattron(win, COLOR_PAIR(8)); // Highlight strings in magenta
+                mvwprintw(win, line_num, x, "%s", line.substr(i, end_pos - i + 1).c_str());
+                wattroff(win, COLOR_PAIR(8));
+                x += end_pos - i;
+                i = end_pos;
+            } else {
+                mvwprintw(win, line_num, x, "%c", ch);
+            }
+            x += 1;
+        } else {
+            word += ch;
+        }
+    }
+}
+
+void displayScrollableContent(WINDOW* win, const std::vector<std::string>& content, int start_line, int max_lines) {
+    int line_num = 2; // Starting line for content display
+    for (int i = 0; i < max_lines && (i + start_line) < (int)content.size(); ++i) {
+        highlightSyntax(win, content[i + start_line], line_num++);
+    }
+}
+
+void drawBottomMenu(WINDOW* bottom_win) {
+    wattron(bottom_win, COLOR_PAIR(6));
+    mvwprintw(bottom_win, 1, 2, "<Help> <Back> <Exit>");
+    wattroff(bottom_win, COLOR_PAIR(6));
+    wrefresh(bottom_win);
 }
 
 void drawMenu(WINDOW* menu_win, int highlight, const std::vector<std::string>& items, const std::string& title, bool format_items = false) {
@@ -119,54 +190,6 @@ void drawMenu(WINDOW* menu_win, int highlight, const std::vector<std::string>& i
     wrefresh(menu_win);
 }
 
-std::string tuiSelectItem(const std::vector<std::string>& items, const std::string& title, bool format_items = false) {
-    initscr();
-    clear();
-    noecho();
-    cbreak();   // Disable line buffering, pass on everything
-    curs_set(0);
-    keypad(stdscr, TRUE);   // Enable arrow keys
-
-    initColors();  // Initialize colors
-
-    // Set the entire background to blue
-    bkgd(COLOR_PAIR(1));
-
-    int startx = (COLS - 50) / 2;
-    int starty = (LINES - 20) / 2;
-
-    WINDOW* menu_win = newwin(20, 50, starty, startx);
-    keypad(menu_win, TRUE);   // Enable arrow keys for the window
-
-    int highlight = 0;
-    int choice = 0;
-    int c;
-
-    while (1) {
-        drawMenu(menu_win, highlight, items, title, format_items);
-        c = wgetch(menu_win);
-        switch (c) {
-            case 'k':
-            case KEY_UP:
-                if (highlight > 0) highlight--;
-                break;
-            case 'j':
-            case KEY_DOWN:
-                if (highlight < static_cast<int>(items.size() - 1)) highlight++;
-                break;
-            case 10:  // Enter key
-                choice = highlight;
-                break;
-            default:
-                break;
-        }
-        if (c == 10) break;
-    }
-    endwin();
-
-    return items[choice];
-}
-
 std::string readFileContent(const std::string& file_path) {
     std::ifstream file(file_path);
     if (!file.is_open()) {
@@ -179,49 +202,6 @@ std::string readFileContent(const std::string& file_path) {
     }
     file.close();
     return content;
-}
-
-std::string runCppFileWithOutput(const std::string& cpp_file_path) {
-    std::string output_file = cpp_file_path.substr(0, cpp_file_path.find_last_of(".")) + "_output";
-    std::string compile_command = "clang++ " + cpp_file_path + " -o " + output_file;
-    std::string output;
-    if (system(compile_command.c_str()) == 0) {
-        // Measure the runtime
-        auto start_time = std::chrono::high_resolution_clock::now();
-        
-        FILE* pipe = popen(output_file.c_str(), "r");
-        if (!pipe) {
-            output = "Error executing program!";
-        } else {
-            char buffer[128];
-            while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
-                output += buffer;
-            }
-            pclose(pipe);
-        }
-        
-        auto end_time = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
-
-        output += "\nExecution time: " + std::to_string(duration) + " nanoseconds\n";
-    } else {
-        output = "Compilation failed for " + cpp_file_path + "\n";
-    }
-    return output;
-}
-
-void displayScrollableContent(WINDOW* win, const std::vector<std::string>& content, int start_line, int max_lines) {
-    int line_num = 2; // Starting line for content display
-    for (int i = 0; i < max_lines && (i + start_line) < (int)content.size(); ++i) {
-        mvwprintw(win, line_num++, 2, content[i + start_line].c_str());
-    }
-}
-
-void drawBottomMenu(WINDOW* bottom_win) {
-    wattron(bottom_win, COLOR_PAIR(6));
-    mvwprintw(bottom_win, 1, 2, "<Help> <Back> <Exit>");
-    wattroff(bottom_win, COLOR_PAIR(6));
-    wrefresh(bottom_win);
 }
 
 void displayHelp() {
@@ -347,6 +327,83 @@ void displayCodeAndOutput(const std::string& file_content, const std::string& pr
     }
 
     endwin();
+}
+
+std::string runCppFileWithOutput(const std::string& cpp_file_path) {
+    std::string output_file = cpp_file_path.substr(0, cpp_file_path.find_last_of("."));
+    std::string compile_command = "clang++ " + cpp_file_path + " -o " + output_file;
+    std::string output;
+    if (system(compile_command.c_str()) == 0) {
+        // Measure the runtime
+        auto start_time = std::chrono::high_resolution_clock::now();
+        
+        FILE* pipe = popen(output_file.c_str(), "r");
+        if (!pipe) {
+            output = "Error executing program!";
+        } else {
+            char buffer[128];
+            while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
+                output += buffer;
+            }
+            pclose(pipe);
+        }
+        
+        auto end_time = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
+
+        output += "\nExecution time: " + std::to_string(duration) + " nanoseconds\n";
+    } else {
+        output = "Compilation failed for " + cpp_file_path + "\n";
+    }
+    return output;
+}
+
+std::string tuiSelectItem(const std::vector<std::string>& items, const std::string& title, bool format_items = false) {
+    initscr();
+    clear();
+    noecho();
+    cbreak();   // Disable line buffering, pass on everything
+    curs_set(0);
+    keypad(stdscr, TRUE);   // Enable arrow keys
+
+    initColors();  // Initialize colors
+
+    // Set the entire background to blue
+    bkgd(COLOR_PAIR(1));
+
+    int startx = (COLS - 50) / 2;
+    int starty = (LINES - 20) / 2;
+
+    WINDOW* menu_win = newwin(20, 50, starty, startx);
+    keypad(menu_win, TRUE);   // Enable arrow keys for the window
+
+    int highlight = 0;
+    int choice = 0;
+    int c;
+
+    while (1) {
+        drawMenu(menu_win, highlight, items, title, format_items);
+        c = wgetch(menu_win);
+        switch (c) {
+            case 'k':
+            case KEY_UP:
+                if (highlight > 0) highlight--;
+                break;
+            case 'j':
+            case KEY_DOWN:
+                if (highlight < static_cast<int>(items.size() - 1)) highlight++;
+                break;
+            case 10:  // Enter key
+                choice = highlight;
+                break;
+            default:
+                break;
+        }
+        if (c == 10) break;
+    }
+    endwin();
+
+    return items[choice];
 }
 
 void tuiSelectAndRun(const std::string& cpp_folder) {
