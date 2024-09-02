@@ -1,11 +1,14 @@
+// Copyright 2024 KernelTurtle
 #include <ncurses.h>
+#include <sys/stat.h>
 #include <dirent.h>
+#include <errno.h>
 #include <iostream>
 #include <vector>
 #include <string>
 #include <cstdlib>
-#include <regex>
-#include <chrono>
+#include <regex>   //NOLINT
+#include <chrono>  //NOLINT
 #include <fstream>
 #include <sstream>
 #include <unordered_set>
@@ -84,73 +87,113 @@ std::string formatFileName(const std::string& file_name) {
 void initColors() {
     start_color();
     // Define color pairs
-    init_pair(1, COLOR_WHITE, COLOR_BLUE);   // White text on blue background
-    init_pair(2, COLOR_BLACK, COLOR_CYAN);   // Black text on cyan background
-    init_pair(3, COLOR_WHITE, COLOR_BLACK);  // White text on black background (menu title)
-    init_pair(4, COLOR_BLACK, COLOR_WHITE);  // Black text on grey background (menu items)
-    init_pair(5, COLOR_WHITE, COLOR_RED);    // White text on red background (highlight)
-    init_pair(6, COLOR_BLACK, COLOR_BLUE);   // Black text on blue background (bottom menu)
-    init_pair(7, COLOR_YELLOW, COLOR_WHITE); // Yellow text (for keywords)
-    init_pair(8, COLOR_MAGENTA, COLOR_WHITE);// Magenta text (for strings)
-    init_pair(9, COLOR_GREEN, COLOR_WHITE);  // Green text (for comments)
-    init_pair(10, COLOR_CYAN, COLOR_WHITE);  // Cyan text (for numbers)
+    init_pair(1, COLOR_WHITE, COLOR_BLUE);     // White text on blue background
+    init_pair(2, COLOR_BLACK, COLOR_CYAN);     // Black text on cyan background
+    init_pair(3, COLOR_WHITE, COLOR_BLACK);    // White text on black background (menu title)
+    init_pair(4, COLOR_BLACK, COLOR_WHITE);    // Black text on grey background (menu items)
+    init_pair(5, COLOR_WHITE, COLOR_RED);      // White text on red background (highlight)
+    init_pair(6, COLOR_BLACK, COLOR_BLUE);     // Black text on blue background (bottom menu)
+    init_pair(7, COLOR_YELLOW, COLOR_WHITE);   // Yellow text (for keywords)
+    init_pair(8, COLOR_MAGENTA, COLOR_WHITE);  // Magenta text (for strings)
+    init_pair(9, COLOR_GREEN, COLOR_WHITE);    // Green text (for comments)
+    init_pair(10, COLOR_CYAN, COLOR_WHITE);    // Cyan text (for numbers)
 }
 
 std::unordered_set<std::string> cppKeywords = {
-    "int", "float", "double", "char", "bool", "void", "if", "else", "for", "while", "do", 
-    "switch", "case", "default", "break", "continue", "return", "true", "false", "class", 
+    "int", "float", "double", "char", "bool", "void", "if", "else", "for", "while", "do",
+    "switch", "case", "default", "break", "continue", "return", "true", "false", "class",
     "struct", "namespace", "public", "private", "protected", "virtual", "override", "const",
     "static", "template", "typename", "include", "iostream", "using", "std", "new", "delete",
     "try", "catch", "throw"
 };
-
 void highlightSyntax(WINDOW* win, const std::string& line, int line_num) {
-    int x = 2; // Starting x position for the text
+    int x = 2;  // Starting x position for the text
     std::string word;
+    bool in_string = false;
+    bool in_comment = false;
+
     for (size_t i = 0; i < line.length(); ++i) {
         char ch = line[i];
-        if (isspace(ch) || ispunct(ch)) {
-            if (!word.empty()) {
-                if (cppKeywords.find(word) != cppKeywords.end()) {
-                    wattron(win, COLOR_PAIR(7)); // Highlight keywords in yellow
-                } else if (std::regex_match(word, std::regex("^[0-9]+$"))) {
-                    wattron(win, COLOR_PAIR(10)); // Highlight numbers in cyan
-                } else {
-                    wattron(win, COLOR_PAIR(4)); // Default color
-                }
-                mvwprintw(win, line_num, x, "%s", word.c_str());
-                wattroff(win, COLOR_PAIR(7));
-                wattroff(win, COLOR_PAIR(10));
-                word.clear();
-            }
-            if (ch == '/' && i + 1 < line.length() && line[i + 1] == '/') {
-                wattron(win, COLOR_PAIR(9)); // Highlight comments in green
-                mvwprintw(win, line_num, x, "%s", line.substr(i).c_str());
-                wattroff(win, COLOR_PAIR(9));
-                break;
-            } else if (ch == '"') {
-                size_t end_pos = line.find('"', i + 1);
-                if (end_pos == std::string::npos) {
-                    end_pos = line.length() - 1;
-                }
-                wattron(win, COLOR_PAIR(8)); // Highlight strings in magenta
-                mvwprintw(win, line_num, x, "%s", line.substr(i, end_pos - i + 1).c_str());
-                wattroff(win, COLOR_PAIR(8));
-                x += end_pos - i;
-                i = end_pos;
-            } else {
+
+        // Handle comments
+        if (!in_string && ch == '/' && i + 1 < line.length() && line[i + 1] == '/') {
+            in_comment = true;
+            wattron(win, COLOR_PAIR(9));  // Highlight comments in green
+            mvwprintw(win, line_num, x, "%s", line.substr(i).c_str());
+            wattroff(win, COLOR_PAIR(9));
+            break;  // End processing for this line
+        }
+
+        // Handle strings
+        if (ch == '"') {
+            if (in_string) {
+                in_string = false;
+                wattron(win, COLOR_PAIR(8));  // Highlight strings in magenta
                 mvwprintw(win, line_num, x, "%c", ch);
+                wattroff(win, COLOR_PAIR(8));
+            } else {
+                in_string = true;
+                wattron(win, COLOR_PAIR(8));  // Highlight strings in magenta
+                mvwprintw(win, line_num, x, "%c", ch);
+                wattroff(win, COLOR_PAIR(8));
             }
             x += 1;
+            continue;
+        }
+
+        if (in_string) {
+            mvwprintw(win, line_num, x, "%c", ch);
+            x += 1;
+            continue;
+        }
+
+        // Handle keywords and numbers
+        if (isspace(ch) || ispunct(ch)) {
+            if (!word.empty()) {
+                // Determine color for the word
+                if (cppKeywords.find(word) != cppKeywords.end()) {
+                    wattron(win, COLOR_PAIR(7));  // Highlight keywords in yellow
+                } else if (std::regex_match(word, std::regex("^[0-9]+$"))) {
+                    wattron(win, COLOR_PAIR(10));  // Highlight numbers in cyan
+                } else {
+                    wattron(win, COLOR_PAIR(4));  // Default color
+                }
+                mvwprintw(win, line_num, x - word.length(), "%s", word.c_str());
+                wattroff(win, COLOR_PAIR(7));
+                wattroff(win, COLOR_PAIR(10));
+                wattroff(win, COLOR_PAIR(4));
+                word.clear();
+            }
+            // Print symbols directly
+            if (!in_comment) {
+                mvwprintw(win, line_num, x, "%c", ch);
+            }
         } else {
             word += ch;
         }
+        x += 1;
+    }
+
+    // Handle any remaining word after the loop
+    if (!word.empty()) {
+        if (cppKeywords.find(word) != cppKeywords.end()) {
+            wattron(win, COLOR_PAIR(7));  // Highlight keywords in yellow
+        } else if (std::regex_match(word, std::regex("^[0-9]+$"))) {
+            wattron(win, COLOR_PAIR(10));  // Highlight numbers in cyan
+        } else {
+            wattron(win, COLOR_PAIR(4));  // Default color
+        }
+        mvwprintw(win, line_num, x - word.length(), "%s", word.c_str());
+        wattroff(win, COLOR_PAIR(7));
+        wattroff(win, COLOR_PAIR(10));
+        wattroff(win, COLOR_PAIR(4));
     }
 }
 
+
 void displayScrollableContent(WINDOW* win, const std::vector<std::string>& content, int start_line, int max_lines) {
-    int line_num = 2; // Starting line for content display
-    for (int i = 0; i < max_lines && (i + start_line) < (int)content.size(); ++i) {
+    int line_num = 2;  // Starting line for content display
+    for (int i = 0; i < max_lines && (i + start_line) < static_cast<int>(content.size()); ++i) {
         highlightSyntax(win, content[i + start_line], line_num++);
     }
 }
@@ -162,22 +205,28 @@ void drawBottomMenu(WINDOW* bottom_win) {
     wrefresh(bottom_win);
 }
 
-void drawMenu(WINDOW* menu_win, int highlight, const std::vector<std::string>& items, const std::string& title, bool format_items = false) {
+void drawMenu(
+    WINDOW* menu_win,
+    int highlight,
+    const std::vector<std::string>& items,
+    const std::string& title,
+    bool format_items = false
+) {
     int x = 2, y = 2;
-    
+
     wbkgd(menu_win, COLOR_PAIR(4));  // Grey background for the menu
     wattron(menu_win, COLOR_PAIR(3));
-    mvwprintw(menu_win, 1, 2, title.c_str());  // Print the title at the top
+    mvwprintw(menu_win, 1, 2, "%s", title.c_str());  // Print the title at the top
     wattroff(menu_win, COLOR_PAIR(3));
-    
+
     for (size_t i = 0; i < items.size(); ++i) {
         std::string display_name = format_items ? formatFileName(items[i]) : items[i];
         if (static_cast<int>(i) == highlight) {
             wattron(menu_win, A_REVERSE | COLOR_PAIR(5));  // Highlight with reverse video and red background
-            mvwprintw(menu_win, y, x, display_name.c_str());
+            mvwprintw(menu_win, y, x, "%s", display_name.c_str());
             wattroff(menu_win, A_REVERSE | COLOR_PAIR(5));
         } else {
-            mvwprintw(menu_win, y, x, display_name.c_str());
+            mvwprintw(menu_win, y, x, "%s", display_name.c_str());
         }
         y++;
     }
@@ -226,7 +275,7 @@ bool displayConfirmation() {
     wbkgd(confirm_win, COLOR_PAIR(4));
     box(confirm_win, 0, 0);
     mvwprintw(confirm_win, 1, 2, "Are you sure you want to go back? (y/n)");
-    
+
     wrefresh(confirm_win);
     int ch = wgetch(confirm_win);
     delwin(confirm_win);
@@ -238,6 +287,7 @@ void displayCodeAndOutput(const std::string& file_content, const std::string& pr
     noecho();
     cbreak();
     keypad(stdscr, TRUE);
+
     int height = LINES - 6;  // Reserve space for the bottom menu
     int width = (COLS / 2) - 2;
     int startx = 2;
@@ -294,8 +344,8 @@ void displayCodeAndOutput(const std::string& file_content, const std::string& pr
                 break;
             case 'j':
             case KEY_DOWN:
-                if (code_start_line + max_lines < (int)code_lines.size()) code_start_line++;
-                if (output_start_line + max_lines < (int)output_lines.size()) output_start_line++;
+                if (code_start_line + max_lines < static_cast<int>(code_lines.size())) code_start_line++;
+                if (output_start_line + max_lines < static_cast<int>(output_lines.size())) output_start_line++;
                 break;
             case 'h':  // Help
                 displayHelp();
@@ -330,14 +380,31 @@ void displayCodeAndOutput(const std::string& file_content, const std::string& pr
 }
 
 std::string runCppFileWithOutput(const std::string& cpp_file_path) {
-    std::string output_file = cpp_file_path.substr(0, cpp_file_path.find_last_of("."));
-    std::string compile_command = "clang++ " + cpp_file_path + " -o " + output_file;
+    // Get the current working directory
+    char cwd[1024];
+    if (getcwd(cwd, sizeof(cwd)) == nullptr) {
+        return "Error getting current working directory!";
+    }
+    std::string cwd_str = std::string(cwd);
+    
+    // Create a temporary directory name
+    char temp_dir_template[] = "/tmp/tuiXXXXXX";
+    char* temp_dir = mkdtemp(temp_dir_template);
+    if (temp_dir == nullptr) {
+        return "Error creating temporary directory!";
+    }
+
+    std::string temp_dir_str = temp_dir;
+    std::string binary_file = temp_dir_str + "/program";  // Binary file path
+    std::string output_file = temp_dir_str + "/output";    // Output file path
+    std::string compile_command = "clang++ " + cpp_file_path + " -o " + binary_file;
     std::string output;
+
     if (system(compile_command.c_str()) == 0) {
         // Measure the runtime
         auto start_time = std::chrono::high_resolution_clock::now();
-        
-        FILE* pipe = popen(output_file.c_str(), "r");
+
+        FILE* pipe = popen((binary_file + " > " + output_file).c_str(), "r");
         if (!pipe) {
             output = "Error executing program!";
         } else {
@@ -346,18 +413,26 @@ std::string runCppFileWithOutput(const std::string& cpp_file_path) {
                 output += buffer;
             }
             pclose(pipe);
-        }
-        
-        auto end_time = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
 
-        output += "\nExecution time: " + std::to_string(duration) + " nanoseconds\n";
+            // Append program output
+            std::ifstream output_stream(output_file);
+            std::string program_output((std::istreambuf_iterator<char>(output_stream)),
+                                        std::istreambuf_iterator<char>());
+
+            auto end_time = std::chrono::high_resolution_clock::now();
+            auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
+            output += "\nExecution time: " + std::to_string(duration) + " nanoseconds\n";
+        }
     } else {
         output = "Compilation failed for " + cpp_file_path + "\n";
     }
+
+    // Clean up temporary directory
+    std::string cleanup_command = "rm -rf " + temp_dir_str;
+    system(cleanup_command.c_str());
+
     return output;
 }
-
 std::string tuiSelectItem(const std::vector<std::string>& items, const std::string& title, bool format_items = false) {
     initscr();
     clear();
@@ -413,6 +488,7 @@ void tuiSelectAndRun(const std::string& cpp_folder) {
         return;
     }
 
+    // Select a problem directory
     std::string chosen_problem = tuiSelectItem(problems, "Select a Problem", false);
     std::string chosen_problem_path = cpp_folder + "/" + chosen_problem;
 
@@ -422,9 +498,11 @@ void tuiSelectAndRun(const std::string& cpp_folder) {
         return;
     }
 
+    // Select a .cpp file
     std::string chosen_file = tuiSelectItem(cpp_files, "Select a File", true);
     std::string chosen_file_path = chosen_problem_path + "/" + chosen_file;
 
+    // Run the selected file and get the output
     std::string program_output = runCppFileWithOutput(chosen_file_path);
 
     // Read the content of the executed file
