@@ -1,4 +1,3 @@
-// Copyright 2024 KernelTurtle
 #include <ncurses.h>
 #include <sys/stat.h>
 #include <dirent.h>
@@ -408,16 +407,13 @@ std::string runCppFileWithOutput(const std::string& cpp_file_path) {
         if (!pipe) {
             output = "Error executing program!";
         } else {
-            char buffer[128];
-            while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
-                output += buffer;
-            }
             pclose(pipe);
 
             // Append program output
             std::ifstream output_stream(output_file);
             std::string program_output((std::istreambuf_iterator<char>(output_stream)),
                                         std::istreambuf_iterator<char>());
+            output += program_output;
 
             auto end_time = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
@@ -433,6 +429,7 @@ std::string runCppFileWithOutput(const std::string& cpp_file_path) {
 
     return output;
 }
+
 std::string tuiSelectItem(const std::vector<std::string>& items, const std::string& title, bool format_items = false) {
     initscr();
     clear();
