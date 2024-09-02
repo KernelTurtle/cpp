@@ -1,3 +1,4 @@
+// Copyright 2024 KernelTurtle
 #include <ncurses.h>
 #include <sys/stat.h>
 #include <dirent.h>
@@ -5,11 +6,14 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <cstring>
+#include <cmath>
 #include <cstdlib>
 #include <regex>   //NOLINT
 #include <chrono>  //NOLINT
 #include <fstream>
 #include <sstream>
+#include <thread>  //NOLINT
 #include <unordered_set>
 
 #ifdef _WIN32
@@ -19,6 +23,12 @@
 #include <unistd.h>
 #define GetCurrentDir getcwd
 #endif
+
+void tuiSelectAndRun(const std::string& cpp_folder);
+void drawList(WINDOW* win, const std::vector<std::string>& items, int highlight);
+void applyBlurEffect(WINDOW* win, const std::vector<std::string>& items);
+void initColors();
+
 
 std::string GetCurrentWorkingDir() {
     char buff[FILENAME_MAX];
@@ -78,9 +88,9 @@ std::vector<std::string> listDirectories(const std::string& path) {
 std::string formatFileName(const std::string& file_name) {
     // Remove ".cpp" extension
     std::string base_name = file_name.substr(0, file_name.find_last_of("."));
-
+    std::replace(base_name.begin(), base_name.end(), '_', ' ');
     // Append " iteration" to the base name
-    return base_name + " iteration";
+    return base_name;
 }
 
 void initColors() {
@@ -189,20 +199,47 @@ void highlightSyntax(WINDOW* win, const std::string& line, int line_num) {
     }
 }
 
+void applyBlurEffect() {
+    attron(A_DIM);  // Apply dim attribute
+    for (int i = 0; i < LINES; ++i) {
+        for (int j = 0; j < COLS; ++j) {
+            mvprintw(i, j, " ");  // Fill the screen with spaces to apply dim effect
+        }
+    }
+    attroff(A_DIM);  // Turn off dim attribute
+    refresh();
+}
 
 void displayScrollableContent(WINDOW* win, const std::vector<std::string>& content, int start_line, int max_lines) {
-    int line_num = 2;  // Starting line for content display
+    int line_num = 1;  // Starting line for content display
     for (int i = 0; i < max_lines && (i + start_line) < static_cast<int>(content.size()); ++i) {
         highlightSyntax(win, content[i + start_line], line_num++);
     }
 }
 
-void drawBottomMenu(WINDOW* bottom_win) {
-    wattron(bottom_win, COLOR_PAIR(6));
-    mvwprintw(bottom_win, 1, 2, "<Help> <Back> <Exit>");
-    wattroff(bottom_win, COLOR_PAIR(6));
+void drawBottomMenu(WINDOW* bottom_win, int highlight) {
+    const std::vector<std::string> menu_items = {"<Help>", "<Back>", "<Exit>"};
+    int num_items = menu_items.size();
+    int max_length = 0;
+    for (const auto& item : menu_items) {
+        if (static_cast<int>(item.length()) > max_length) {
+            max_length = item.length();
+        }
+    }
+
+    int startx = (COLS - (max_length * num_items + (num_items - 1) * 4)) / 2;
+
+    wbkgd(bottom_win, COLOR_PAIR(6));  // Set blue background for the bottom menu
+    for (int i = 0; i < num_items; ++i) {
+        if (i == highlight) {
+            wattron(bottom_win, A_REVERSE | COLOR_PAIR(5));  // Highlight the current selection
+        }
+        mvwprintw(bottom_win, 1, startx + i * (max_length + 4), "%s", menu_items[i].c_str());
+        wattroff(bottom_win, A_REVERSE | COLOR_PAIR(5));
+    }
     wrefresh(bottom_win);
 }
+
 
 void drawMenu(
     WINDOW* menu_win,
@@ -253,8 +290,10 @@ std::string readFileContent(const std::string& file_path) {
 }
 
 void displayHelp() {
+    applyBlurEffect();  // Apply blur effect before displaying the help menu
+
     WINDOW* help_win = newwin(10, 60, (LINES - 10) / 2, (COLS - 60) / 2);
-    wbkgd(help_win, COLOR_PAIR(4));
+    wbkgd(help_win, COLOR_PAIR(4));  // White background for the help menu
     box(help_win, 0, 0);
     mvwprintw(help_win, 1, 2, "Help Menu:");
     mvwprintw(help_win, 3, 2, "j/k or Arrow Keys: Navigate");
@@ -267,7 +306,13 @@ void displayHelp() {
     wrefresh(help_win);
     wgetch(help_win);
     delwin(help_win);
+
+    // Reset the background to blue after closing the help menu
+    bkgd(COLOR_PAIR(1));
+    clear();
+    refresh();
 }
+
 
 bool displayConfirmation() {
     WINDOW* confirm_win = newwin(5, 40, (LINES - 5) / 2, (COLS - 40) / 2);
@@ -287,30 +332,47 @@ void displayCodeAndOutput(const std::string& file_content, const std::string& pr
     cbreak();
     keypad(stdscr, TRUE);
 
-    int height = LINES - 6;  // Reserve space for the bottom menu
+    initColors();  // Initialize colors
+
+    // Set the entire background to blue
+    bkgd(COLOR_PAIR(1));
+    clear();
+    refresh();
+
+    int label_space = 2;  // Space for the label inside the box
+    int height = LINES - label_space - 2;  // Reserve space for the bottom menu
     int width = (COLS / 2) - 2;
     int startx = 2;
-    int starty = 2;
+    int starty = label_space - 1;  // Start lower to accommodate the label inside the box
 
-    // Create two windows side by side
+    // Create two windows side by side for code and output
     WINDOW* code_win = newwin(height, width, starty, startx);
     WINDOW* output_win = newwin(height, width, starty, startx + width + 2);
     WINDOW* bottom_win = newwin(3, COLS, LINES - 3, 0);
 
+    // Draw the top border lower and place the labels inside
     wbkgd(code_win, COLOR_PAIR(4));
     box(code_win, 0, 0);
-    mvwprintw(code_win, 1, 2, "Executed Code:");
+    mvwprintw(code_win, 0, 2, "Executed Code:");
 
     wbkgd(output_win, COLOR_PAIR(4));
     box(output_win, 0, 0);
-    mvwprintw(output_win, 1, 2, "Program Output:");
+    mvwprintw(output_win, 0, 2, "Program Output:");
 
-    wbkgd(bottom_win, COLOR_PAIR(6));
-    drawBottomMenu(bottom_win);
+    // Track the highlight index for the bottom menu
+    int highlight = 0;
 
+    // Draw the bottom menu
+    drawBottomMenu(bottom_win, highlight);
+
+    // Refresh the windows to show the boxes, labels, and initial content
+    wrefresh(code_win);
+    wrefresh(output_win);
+
+    // Set up the content for display
     int code_start_line = 0;
     int output_start_line = 0;
-    int max_lines = height - 3;  // Reserve space for borders and titles
+    int max_lines = height - label_space - 1;  // Reserve space for borders and labels
 
     std::vector<std::string> code_lines;
     std::vector<std::string> output_lines;
@@ -330,6 +392,7 @@ void displayCodeAndOutput(const std::string& file_content, const std::string& pr
     displayScrollableContent(code_win, code_lines, code_start_line, max_lines);
     displayScrollableContent(output_win, output_lines, output_start_line, max_lines);
 
+    // Refresh the windows again to ensure the content is displayed
     wrefresh(code_win);
     wrefresh(output_win);
 
@@ -348,14 +411,46 @@ void displayCodeAndOutput(const std::string& file_content, const std::string& pr
                 break;
             case 'h':  // Help
                 displayHelp();
+
+                // Reset the background to blue and refresh all windows
+                bkgd(COLOR_PAIR(1));
+                clear();
+                refresh();
+                wrefresh(code_win);
+                wrefresh(output_win);
+                drawBottomMenu(bottom_win, highlight);
                 break;
             case 'b':  // Back
-                if (displayConfirmation()) {
-                    return;  // Exit the function to go back to the previous menu
-                }
-                break;
+                // Clean up current windows and call tuiSelectAndRun to return to folder selection
+                endwin();
+                tuiSelectAndRun(GetCurrentWorkingDir());  // Restart folder selection with current directory
+                return;  // Exit the function to prevent continuing in current context
             case 'q':  // Exit
+                endwin();
                 return;  // Exit the loop and program
+            case '\t':  // Tab key to move between menu options
+                highlight = (highlight + 1) % 3;
+                drawBottomMenu(bottom_win, highlight);
+                break;
+            case '\n':  // Enter key to select the highlighted option
+                if (highlight == 0) {  // Help
+                    displayHelp();
+                } else if (highlight == 1) {  // Back
+                    endwin();
+                    tuiSelectAndRun(GetCurrentWorkingDir());
+                    return;
+                } else if (highlight == 2) {  // Exit
+                    endwin();
+                    return;
+                }
+                // After any action, reset the background to blue and refresh the windows
+                bkgd(COLOR_PAIR(1));
+                clear();
+                refresh();
+                wrefresh(code_win);
+                wrefresh(output_win);
+                drawBottomMenu(bottom_win, highlight);
+                break;
             default:
                 break;
         }
@@ -364,9 +459,9 @@ void displayCodeAndOutput(const std::string& file_content, const std::string& pr
         werase(code_win);
         werase(output_win);
         box(code_win, 0, 0);
-        mvwprintw(code_win, 1, 2, "Executed Code:");
+        mvwprintw(code_win, 0, 2, "Executed Code:");  // Redraw label inside the box
         box(output_win, 0, 0);
-        mvwprintw(output_win, 1, 2, "Program Output:");
+        mvwprintw(output_win, 0, 2, "Program Output:");  // Redraw label inside the box
 
         displayScrollableContent(code_win, code_lines, code_start_line, max_lines);
         displayScrollableContent(output_win, output_lines, output_start_line, max_lines);
@@ -377,7 +472,6 @@ void displayCodeAndOutput(const std::string& file_content, const std::string& pr
 
     endwin();
 }
-
 std::string runCppFileWithOutput(const std::string& cpp_file_path) {
     // Get the current working directory
     char cwd[1024];
@@ -385,7 +479,7 @@ std::string runCppFileWithOutput(const std::string& cpp_file_path) {
         return "Error getting current working directory!";
     }
     std::string cwd_str = std::string(cwd);
-    
+
     // Create a temporary directory name
     char temp_dir_template[] = "/tmp/tuiXXXXXX";
     char* temp_dir = mkdtemp(temp_dir_template);
@@ -442,6 +536,8 @@ std::string tuiSelectItem(const std::vector<std::string>& items, const std::stri
 
     // Set the entire background to blue
     bkgd(COLOR_PAIR(1));
+
+    applyBlurEffect();  // Apply blur effect before displaying the selection menu
 
     int startx = (COLS - 50) / 2;
     int starty = (LINES - 20) / 2;
@@ -509,7 +605,103 @@ void tuiSelectAndRun(const std::string& cpp_folder) {
     displayCodeAndOutput(file_content, program_output);
 }
 
+void displayBigText(int x, int y) {
+    const char* text[] = {
+        "    dP                                    a88888b.                    ",
+        "    88                                   d8'   `88                    ",
+        "    88        .d8888b. .d8888b. .d8888b. 88        88d888b. 88d888b.  ",
+        "    88        88ooood8 Y8ooooo. Y8ooooo. 88        88'  `88 88'  `88  ",
+        "    88        88.  ...       88       88 Y8.   .88 88.  .88 88.  .88  ",
+        "    88888888P `88888P' `88888P' `88888P'  Y88888P' 88Y888P' 88Y888P'  ",
+        "                                                88       88           ",
+        "                                                dP       dP           "
+    };
+
+    for (int i = 0; i < 7; ++i) {
+        attron(A_BOLD);  // Make the text bold
+        mvprintw(y + i, x, "%s", text[i]);  // Print each line of the big text
+        attroff(A_BOLD);
+    }
+}
+
+void renderSplashScreen() {
+    initscr();              // Initialize the window
+    noecho();               // Don't echo any keypresses
+    curs_set(FALSE);        // Don't display a cursor
+    start_color();          // Enable color functionality
+
+    // Fill background with color
+    initColors();  // Initialize colors
+    bkgd(COLOR_PAIR(1));  // Set the background color to blue
+
+    // Spinning donut animation on the left side
+    int donut_x = COLS - 150;  // Left side of the screen
+    int donut_y = LINES / 2 - 10;  // Center vertically with some offset
+
+    int text_x = COLS / 2;  // Right half of the screen
+    int text_y = (LINES - 6) / 2;  // Center vertically
+
+    float A = 0, B = 0;
+    int iterations = 500;  // Number of frames to display
+
+    while (iterations--) {
+        float i, j;
+        int k;
+        float z[1760];
+        char b[1760];
+
+        memset(b, 32, 1760);   // Fill buffer with spaces
+        memset(z, 0, 7040);    // Fill depth buffer with zeroes
+        for (j = 0; j < 6.28; j += 0.07) {
+            for (i = 0; i < 6.28; i += 0.02) {
+                float c = sin(i);
+                float d = cos(j);
+                float e = sin(A);
+                float f = sin(j);
+                float g = cos(A);
+                float h = d + 2;
+                float D = 1 / (c * h * e + f * g + 5);
+                float l = cos(i);
+                float m = cos(B);
+                float n = sin(B);
+                float t = c * h * g - f * e;
+                int x = donut_x + 30 * D * (l * h * m - t * n);
+                int y = donut_y + 15 * D * (l * h * n + t * m);
+                int o = x + 80 * y;
+                int N = 8 * ((f * e - c * d * g) * m - c * d * e - f * g - l * d * n);
+                if (22 > y && y > 0 && x > 0 && 80 > x && D > z[o]) {
+                    z[o] = D;
+                    b[o] = "...,,,ooo000"[N > 0 ? N : 0];  // Choose character based on brightness
+                }
+            }
+        }
+
+        clear();  // Clear the screen before drawing
+        for (k = 0; k < 1760; k++) {
+            move(k / 80, k % 80);  // Move to the position where the character will be printed
+            addch(b[k]);           // Print the character
+        }
+
+        // Display the big text "LessCpp" on the right side
+        displayBigText(text_x, text_y);  // Display the big text
+
+        refresh();  // Refresh the screen to show the updated content
+
+        A += 0.04;  // Increment angle A to spin the donut
+        B += 0.02;  // Increment angle B to spin the donut
+
+        usleep(30000);  // Control the speed of the spin
+    }
+
+    getch();   // Wait for user input to close the window
+    endwin();  // End ncurses mode
+}
+
+
+
 int main() {
+    renderSplashScreen();
+
     std::string cpp_folder = GetCurrentWorkingDir();  // Start in the current working directory
     tuiSelectAndRun(cpp_folder);
     return 0;
