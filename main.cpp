@@ -607,8 +607,8 @@ void tuiSelectAndRun(const std::string& cpp_folder) {
 
 void displayBigText(int x, int y) {
     const char* text[] = {
-        "    dP                                    a88888b.                    ",
-        "    88                                   d8'   `88                    ",
+        "    dP                                    a88888b.                    ", 
+        "    88                                   d8'   `88                   ",
         "    88        .d8888b. .d8888b. .d8888b. 88        88d888b. 88d888b.  ",
         "    88        88ooood8 Y8ooooo. Y8ooooo. 88        88'  `88 88'  `88  ",
         "    88        88.  ...       88       88 Y8.   .88 88.  .88 88.  .88  ",
@@ -635,11 +635,11 @@ void renderSplashScreen() {
     bkgd(COLOR_PAIR(1));  // Set the background color to blue
 
     // Spinning donut animation on the left side
-    int donut_x = COLS - 150;  // Left side of the screen
-    int donut_y = LINES / 2 - 10;  // Center vertically with some offset
+    int donut_x = (COLS - 10)/ 3;  // Left side of the screen
+    int donut_y = (LINES - donut_x + 32)/ 1.8;  // Center vertically with some offset
 
     int text_x = COLS / 2;  // Right half of the screen
-    int text_y = (LINES - 6) / 2;  // Center vertically
+    int text_y = (LINES + 10) / 2;  // Center vertically
 
     float A = 0, B = 0;
     int iterations = 500;  // Number of frames to display
@@ -671,7 +671,7 @@ void renderSplashScreen() {
                 int N = 8 * ((f * e - c * d * g) * m - c * d * e - f * g - l * d * n);
                 if (22 > y && y > 0 && x > 0 && 80 > x && D > z[o]) {
                     z[o] = D;
-                    b[o] = "...,,,ooo000"[N > 0 ? N : 0];  // Choose character based on brightness
+                    b[o] = ".,-~:;=!*#$@"[N > 0 ? N : 0];  // Choose character based on brightness
                 }
             }
         }
@@ -689,11 +689,10 @@ void renderSplashScreen() {
 
         A += 0.04;  // Increment angle A to spin the donut
         B += 0.02;  // Increment angle B to spin the donut
-
-        usleep(30000);  // Control the speed of the spin
+        auto end_time = std::chrono::high_resolution_clock::now();
+        auto elapsed = end_time - start_time;
+        std::this_thread::sleep_for(frame_duration - elapsed);
     }
-
-    getch();   // Wait for user input to close the window
     endwin();  // End ncurses mode
 }
 
