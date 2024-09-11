@@ -1,0 +1,7 @@
+// Copyright 2024 Keys
+#ifndef SRC_SPLASH_SCREEN_SPLASH_SCREEN_HPP_
+#define SRC_SPLASH_SCREEN_SPLASH_SCREEN_HPP_
+
+void RenderSplashScreen();
+
+#endif  // SRC_SPLASH_SCREEN_SPLASH_SCREEN_HPP_

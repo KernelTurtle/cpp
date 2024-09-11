@@ -1,0 +1,44 @@
+[
+{
+  "directory": "/home/radhesh/coding/git/github/fix/LeetCode/build",
+  "command": "/usr/bin/swift/usr/bin/clang++ -I/home/radhesh/coding/git/github/fix/LeetCode/src -g -std=gnu++17 -o CMakeFiles/LeetCode.dir/src/main.cpp.o -c /home/radhesh/coding/git/github/fix/LeetCode/src/main.cpp",
+  "file": "/home/radhesh/coding/git/github/fix/LeetCode/src/main.cpp",
+  "output": "CMakeFiles/LeetCode.dir/src/main.cpp.o"
+},
+{
+  "directory": "/home/radhesh/coding/git/github/fix/LeetCode/build",
+  "command": "/usr/bin/swift/usr/bin/clang++ -I/home/radhesh/coding/git/github/fix/LeetCode/src -g -std=gnu++17 -o CMakeFiles/LeetCode.dir/src/tui/tui.cpp.o -c /home/radhesh/coding/git/github/fix/LeetCode/src/tui/tui.cpp",
+  "file": "/home/radhesh/coding/git/github/fix/LeetCode/src/tui/tui.cpp",
+  "output": "CMakeFiles/LeetCode.dir/src/tui/tui.cpp.o"
+},
+{
+  "directory": "/home/radhesh/coding/git/github/fix/LeetCode/build",
+  "command": "/usr/bin/swift/usr/bin/clang++ -I/home/radhesh/coding/git/github/fix/LeetCode/src -g -std=gnu++17 -o CMakeFiles/LeetCode.dir/src/file_handler/file_handler.cpp.o -c /home/radhesh/coding/git/github/fix/LeetCode/src/file_handler/file_handler.cpp",
+  "file": "/home/radhesh/coding/git/github/fix/LeetCode/src/file_handler/file_handler.cpp",
+  "output": "CMakeFiles/LeetCode.dir/src/file_handler/file_handler.cpp.o"
+},
+{
+  "directory": "/home/radhesh/coding/git/github/fix/LeetCode/build",
+  "command": "/usr/bin/swift/usr/bin/clang++ -I/home/radhesh/coding/git/github/fix/LeetCode/src -g -std=gnu++17 -o CMakeFiles/LeetCode.dir/src/syntax_highlighting/syntax_highlighting.cpp.o -c /home/radhesh/coding/git/github/fix/LeetCode/src/syntax_highlighting/syntax_highlighting.cpp",
+  "file": "/home/radhesh/coding/git/github/fix/LeetCode/src/syntax_highlighting/syntax_highlighting.cpp",
+  "output": "CMakeFiles/LeetCode.dir/src/syntax_highlighting/syntax_highlighting.cpp.o"
+},
+{
+  "directory": "/home/radhesh/coding/git/github/fix/LeetCode/build",
+  "command": "/usr/bin/swift/usr/bin/clang++ -I/home/radhesh/coding/git/github/fix/LeetCode/src -g -std=gnu++17 -o CMakeFiles/LeetCode.dir/src/splash_screen/splash_screen.cpp.o -c /home/radhesh/coding/git/github/fix/LeetCode/src/splash_screen/splash_screen.cpp",
+  "file": "/home/radhesh/coding/git/github/fix/LeetCode/src/splash_screen/splash_screen.cpp",
+  "output": "CMakeFiles/LeetCode.dir/src/splash_screen/splash_screen.cpp.o"
+},
+{
+  "directory": "/home/radhesh/coding/git/github/fix/LeetCode/build",
+  "command": "/usr/bin/swift/usr/bin/clang++ -I/home/radhesh/coding/git/github/fix/LeetCode/src -g -std=gnu++17 -o CMakeFiles/LeetCode.dir/src/utils/utils.cpp.o -c /home/radhesh/coding/git/github/fix/LeetCode/src/utils/utils.cpp",
+  "file": "/home/radhesh/coding/git/github/fix/LeetCode/src/utils/utils.cpp",
+  "output": "CMakeFiles/LeetCode.dir/src/utils/utils.cpp.o"
+},
+{
+  "directory": "/home/radhesh/coding/git/github/fix/LeetCode/build",
+  "command": "/usr/bin/swift/usr/bin/clang++ -I/home/radhesh/coding/git/github/fix/LeetCode/src -g -std=gnu++17 -o CMakeFiles/LeetCode.dir/src/colors/colors.cpp.o -c /home/radhesh/coding/git/github/fix/LeetCode/src/colors/colors.cpp",
+  "file": "/home/radhesh/coding/git/github/fix/LeetCode/src/colors/colors.cpp",
+  "output": "CMakeFiles/LeetCode.dir/src/colors/colors.cpp.o"
+}
+]

@@ -2,7 +2,7 @@
 #include <iostream>
 #include <vector>
 
-int uniquePath(int m, int n) {
+int UniquePath(int m, int n) {
     std::vector<std::vector<int>> dp(m, std::vector<int>(n, 0));
 
     for (int i = 0; i < m; i++)
@@ -20,6 +20,6 @@ int uniquePath(int m, int n) {
 }
 
 int main() {
-    int totalCount = uniquePath(3, 7);
+    int totalCount = UniquePath(3, 7);
     std::cout << "The total number of Unique Paths are " << totalCount << std::endl;
 }
