@@ -32,17 +32,20 @@ jobs:
         with:
           cmake-version: '3.x'
 
+      # Install dependencies for Ubuntu (Linux)
       - name: Install dependencies on Ubuntu (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install -y libncurses5-dev libncursesw5-dev g++
 
+      # Install dependencies for macOS
       - name: Install dependencies on macOS
         if: matrix.os == 'macos-latest'
         run: |
           brew install ncurses cmake
 
+      # Install PDCurses for Windows
       - name: Install PDCurses on Windows
         if: matrix.os == 'windows-latest'
         run: |
