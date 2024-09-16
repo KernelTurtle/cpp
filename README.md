@@ -2,7 +2,7 @@
 
 ## Overview
 
-TUIProject is a terminal-based application built using `ncurses` that allows users to navigate through directories, select and run C++ files, and view their output directly in the terminal. The application features a Vim-like command mode, syntax highlighting for C++ code, and a splash screen with animated ASCII art.
+LeetViewer is a terminal-based application built using `ncurses` that allows users to navigate through directories, select and run C++ files, and view their output directly in the terminal. The application features a Vim-like command mode, syntax highlighting for C++ code, and a splash screen with animated ASCII art.
 
 ## Features
 
