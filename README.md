@@ -62,7 +62,7 @@ For Windows, you may need to use a package manager like `vcpkg` or `MSYS2` to in
 
 5. Run the executable:
    ```bash
-   ./TUIProject
+   ./LeetViewer
    ```
 
 ## Filfe Structure
