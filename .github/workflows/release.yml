@@ -43,11 +43,14 @@ jobs:
         run: |
           brew install ncurses cmake
 
-      - name: Install dependencies on Windows
+      - name: Install PDCurses on Windows
         if: matrix.os == 'windows-latest'
         run: |
-          choco install mingw
-          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
+          git clone https://github.com/wmcbrine/PDCurses.git
+          cd PDCurses/wincon
+          mingw32-make -f Makefile
+          mkdir ../../pdcurses_install
+          mv pdcurses.a ../../pdcurses_install/
 
       - name: Configure CMake
         run: cmake -G "${{ matrix.cmake-generator }}" .
@@ -91,5 +94,3 @@ jobs:
             ./artifacts/LeetViewer-windows.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-          
