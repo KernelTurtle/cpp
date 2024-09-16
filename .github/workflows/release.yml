@@ -41,7 +41,7 @@ jobs:
       - name: Install dependencies on macOS
         if: matrix.os == 'macos-latest'
         run: |
-          brew install ncurses cmake g++
+          brew install ncurses cmake
 
       - name: Install dependencies on Windows
         if: matrix.os == 'windows-latest'
