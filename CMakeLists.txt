@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD 17)
 include_directories(src)
 
 # Add the executable and include the source files
-add_executable(LeetCode
+add_executable(LeetViewer
     src/main.cpp
     src/tui/tui.cpp
     src/file_handler/file_handler.cpp
@@ -18,4 +18,4 @@ add_executable(LeetCode
 )
 
 # Link the ncurses library
-target_link_libraries(LeetCode ncurses)
+target_link_libraries(LeetViewer ncurses)

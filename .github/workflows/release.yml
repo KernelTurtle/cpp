@@ -1,0 +1,86 @@
+name: Build and Release LeetViewer
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'   # Trigger workflow on version tags like v1.0.0
+
+jobs:
+  build:
+    name: Build LeetViewer on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            cmake-generator: 'Unix Makefiles'
+          - os: macos-latest
+            cmake-generator: 'Unix Makefiles'
+          - os: windows-latest
+            cmake-generator: 'MinGW Makefiles'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up CMake
+        uses: jwlawson/actions-setup-cmake@v1
+        with:
+          cmake-version: '3.x'
+
+      - name: Install dependencies on Linux and macOS
+        if: matrix.os != 'windows-latest'
+        run: |
+          sudo apt-get update || true
+          sudo apt-get install -y libncurses5-dev libncursesw5-dev g++
+          brew install ncurses cmake g++ || true
+
+      - name: Install dependencies on Windows
+        if: matrix.os == 'windows-latest'
+        run: |
+          choco install mingw
+          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
+
+      - name: Configure CMake
+        run: cmake -G "${{ matrix.cmake-generator }}" .
+
+      - name: Build the project
+        run: cmake --build . --config Release
+
+      - name: Rename and move the executable (Linux/macOS)
+        if: matrix.os != 'windows-latest'
+        run: mv ./LeetViewer ./LeetViewer-${{ matrix.os }}
+
+      - name: Rename and move the executable (Windows)
+        if: matrix.os == 'windows-latest'
+        run: mv ./LeetViewer.exe ./LeetViewer-windows.exe
+
+      - name: Upload the artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: LeetViewer-${{ matrix.os }}
+          path: |
+            LeetViewer-${{ matrix.os }}
+            LeetViewer-windows.exe
+
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: ./artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            ./artifacts/LeetViewer-ubuntu-latest
+            ./artifacts/LeetViewer-macos-latest
+            ./artifacts/LeetViewer-windows.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

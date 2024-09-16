@@ -26,7 +26,7 @@ void applyBlurEffect() {
   refresh();
 }
 
-void tuiSelectAndRun(const std::string& cpp_folder) {
+void TuiSelectAndRun(const std::string& cpp_folder) {
   std::vector<std::string> problems = ListDirectories(cpp_folder);
   if (problems.empty()) {
     std::cerr << "No directories found in " << cpp_folder << std::endl;
@@ -34,7 +34,7 @@ void tuiSelectAndRun(const std::string& cpp_folder) {
   }
 
   std::string chosen_problem =
-      tuiSelectItem(problems, "Select a Problem", false);
+      TuiSelectItem(problems, "Select a Problem", false);
   std::string chosen_problem_path = cpp_folder + "/" + chosen_problem;
 
   std::vector<std::string> cpp_files = ListFiles(chosen_problem_path, ".cpp");
@@ -43,7 +43,7 @@ void tuiSelectAndRun(const std::string& cpp_folder) {
     return;
   }
 
-  std::string chosen_file = tuiSelectItem(cpp_files, "Select a File", true);
+  std::string chosen_file = TuiSelectItem(cpp_files, "Select a File", true);
   std::string chosen_file_path = chosen_problem_path + "/" + chosen_file;
 
   std::string program_output = RunCppFileWithOutput(chosen_file_path);
@@ -86,7 +86,7 @@ void drawMenu(WINDOW* menu_win, int highlight,
   wrefresh(menu_win);
 }
 
-std::string tuiSelectItem(const std::vector<std::string>& items,
+std::string TuiSelectItem(const std::vector<std::string>& items,
                           const std::string& title, bool format_items) {
   initscr();
   clear();
@@ -340,7 +340,7 @@ void DisplayCodeAndOutput(const std::string& file_content,
         if (!in_insert_mode) {
           if (DisplayConfirmation()) {  // Add confirmation before going back
             endwin();
-            tuiSelectAndRun(
+            TuiSelectAndRun(
                 GetCurrentWorkingDir());  // Restart folder selection
                                           // with current directory
             return;  // Exit the function to prevent continuing in current

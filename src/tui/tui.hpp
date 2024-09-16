@@ -11,7 +11,7 @@ void TuiSelectAndRun(const std::string& cpp_folder);
 void DrawMenu(WINDOW* menu_win, int highlight,
               const std::vector<std::string>& items, const std::string& title,
               bool format_items = false);
-std::string tuiSelectItem(const std::vector<std::string>& items,
+std::string TuiSelectItem(const std::vector<std::string>& items,
                           const std::string& title, bool format_items = false);
 void DisplayCodeAndOutput(const std::string& file_content,
                           const std::string& program_output,
