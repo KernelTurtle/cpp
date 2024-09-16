@@ -15,10 +15,13 @@ jobs:
         include:
           - os: ubuntu-latest
             cmake-generator: 'Unix Makefiles'
+            os-name: 'linux'
           - os: macos-latest
             cmake-generator: 'Unix Makefiles'
+            os-name: 'macos'
           - os: windows-latest
             cmake-generator: 'MinGW Makefiles'
+            os-name: 'windows'
 
     steps:
       - name: Checkout code
@@ -29,12 +32,16 @@ jobs:
         with:
           cmake-version: '3.x'
 
-      - name: Install dependencies on Linux and macOS
-        if: matrix.os != 'windows-latest'
+      - name: Install dependencies on Ubuntu (Linux)
+        if: matrix.os == 'ubuntu-latest'
         run: |
-          sudo apt-get update || true
+          sudo apt-get update
           sudo apt-get install -y libncurses5-dev libncursesw5-dev g++
-          brew install ncurses cmake g++ || true
+
+      - name: Install dependencies on macOS
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install ncurses cmake g++
 
       - name: Install dependencies on Windows
         if: matrix.os == 'windows-latest'
@@ -50,19 +57,19 @@ jobs:
 
       - name: Rename and move the executable (Linux/macOS)
         if: matrix.os != 'windows-latest'
-        run: mv ./LeetViewer ./LeetViewer-${{ matrix.os }}
+        run: mv ./LeetViewer ./LeetViewer-${{ matrix.os-name }}
 
       - name: Rename and move the executable (Windows)
         if: matrix.os == 'windows-latest'
-        run: mv ./LeetViewer.exe ./LeetViewer-windows.exe
+        run: mv ./LeetViewer.exe ./LeetViewer-${{ matrix.os-name }}.exe
 
       - name: Upload the artifact
         uses: actions/upload-artifact@v3
         with:
-          name: LeetViewer-${{ matrix.os }}
+          name: LeetViewer-${{ matrix.os-name }}
           path: |
-            LeetViewer-${{ matrix.os }}
-            LeetViewer-windows.exe
+            LeetViewer-${{ matrix.os-name }}
+            LeetViewer-${{ matrix.os-name }}.exe
 
   release:
     name: Create GitHub Release
@@ -79,8 +86,8 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            ./artifacts/LeetViewer-ubuntu-latest
-            ./artifacts/LeetViewer-macos-latest
+            ./artifacts/LeetViewer-linux
+            ./artifacts/LeetViewer-macos
             ./artifacts/LeetViewer-windows.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
