@@ -50,14 +50,14 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: |
           git clone https://github.com/wmcbrine/PDCurses.git
-          cd PDCurses\wincon
-          if (Test-Path "mingwin32.mak") {
-              mingw32-make -f mingwin32.mak
+          cd PDCurses/wincon
+          if (Test-Path "Makefile") {
+              mingw32-make -f Makefile
               mkdir ../../pdcurses_install
               Move-Item pdcurses.a ../../pdcurses_install/
               echo "::set-env name=PDCURSES_DIR::$(pwd)\..\..\pdcurses_install"
           } else {
-              Write-Host "Error: mingwin32.mak not found!"
+              Write-Host "Error: Makefile not found!"
               exit 1
           }
 
