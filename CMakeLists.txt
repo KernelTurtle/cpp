@@ -21,18 +21,26 @@ add_executable(LeetViewer
 if (WIN32)
     # For Windows, use PDCurses
     set(PDCURSES_DIR "${CMAKE_SOURCE_DIR}/PDCurses/wincon")
-    include_directories(${CMAKE_SOURCE_DIR}/PDCurses)
+    include_directories(${PDCURSES_DIR})
 
-    # Verify if the pdcurses.a file exists
-    if (EXISTS "${PDCURSES_DIR}/pdcurses.a")
+    # Verify if the pdcurses.a or libpdcurses.a file exists
+    if (EXISTS "${PDCURSES_DIR}/pdcurses.a" OR EXISTS "${PDCURSES_DIR}/libpdcurses.a")
         add_library(pdcurses STATIC IMPORTED)
+
+        # Adjust the file name based on its actual name (either pdcurses.a or libpdcurses.a)
+        if (EXISTS "${PDCURSES_DIR}/pdcurses.a")
+            set(PDCURSES_LIB "${PDCURSES_DIR}/pdcurses.a")
+        elseif (EXISTS "${PDCURSES_DIR}/libpdcurses.a")
+            set(PDCURSES_LIB "${PDCURSES_DIR}/libpdcurses.a")
+        endif()
+
         set_target_properties(pdcurses PROPERTIES
-            IMPORTED_LOCATION "${PDCURSES_DIR}/pdcurses.a"
+            IMPORTED_LOCATION "${PDCURSES_LIB}"
             INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/PDCurses"
         )
         target_link_libraries(LeetViewer pdcurses)
     else()
-        message(FATAL_ERROR "PDCurses library not found at ${PDCURSES_DIR}/pdcurses.a. Please build PDCurses.")
+        message(FATAL_ERROR "PDCurses library not found at ${PDCURSES_DIR}. Please build PDCurses.")
     endif()
 
 else()
