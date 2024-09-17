@@ -50,18 +50,16 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: |
           git clone https://github.com/wmcbrine/PDCurses.git
-          cd PDCurses
-          git checkout master   # Ensure you're on the main branch
-          cd wincon
-          if [ -f "mingwin32.mak" ]; then
+          cd PDCurses\wincon
+          if (Test-Path "mingwin32.mak") {
               mingw32-make -f mingwin32.mak
-              mkdir -p ../../pdcurses_install
-              mv pdcurses.a ../../pdcurses_install/
-              echo "::set-env name=PDCURSES_DIR::$(pwd)/../../pdcurses_install"
-          else
-              echo "Error: mingwin32.mak not found!"
+              mkdir ../../pdcurses_install
+              Move-Item pdcurses.a ../../pdcurses_install/
+              echo "::set-env name=PDCURSES_DIR::$(pwd)\..\..\pdcurses_install"
+          } else {
+              Write-Host "Error: mingwin32.mak not found!"
               exit 1
-          fi
+          }
 
       # Configure CMake with the correct generator and PDCurses path on Windows
       - name: Configure CMake
