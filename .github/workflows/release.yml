@@ -55,7 +55,8 @@ jobs:
               mingw32-make -f Makefile
               mkdir ../../pdcurses_install
               Move-Item pdcurses.a ../../pdcurses_install/
-              echo "::set-env name=PDCURSES_DIR::$(pwd)\..\..\pdcurses_install"
+              # Set the PDCURSES_DIR environment variable using the new environment file method
+              echo "PDCURSES_DIR=$(pwd)\..\..\pdcurses_install" >> $GITHUB_ENV
           } else {
               Write-Host "Error: Makefile not found!"
               exit 1
