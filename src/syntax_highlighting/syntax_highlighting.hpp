@@ -2,7 +2,11 @@
 #ifndef SRC_SYNTAX_HIGHLIGHTING_SYNTAX_HIGHLIGHTING_HPP_
 #define SRC_SYNTAX_HIGHLIGHTING_SYNTAX_HIGHLIGHTING_HPP_
 
-#include <ncurses.h>
+#ifdef _WIN32
+    #include <curses.h>
+#else
+    #include <ncurses.h>
+#endif
 
 #include <string>
 #include <unordered_set>

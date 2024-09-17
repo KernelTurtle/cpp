@@ -2,7 +2,11 @@
 #ifndef SRC_TUI_TUI_HPP_
 #define SRC_TUI_TUI_HPP_
 
-#include <ncurses.h>
+#ifdef _WIN32
+    #include <curses.h>
+#else
+    #include <ncurses.h>
+#endif
 
 #include <string>
 #include <vector>
