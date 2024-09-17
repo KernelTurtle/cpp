@@ -51,22 +51,19 @@ jobs:
         run: |
           git clone https://github.com/wmcbrine/PDCurses.git
           cd PDCurses/wincon
-          if (Test-Path "Makefile") {
-              mingw32-make -f Makefile
-              mkdir ../../pdcurses_install
-              Move-Item pdcurses.a ../../pdcurses_install/
-              # Set the PDCURSES_DIR environment variable using the new environment file method
-              echo "PDCURSES_DIR=$(pwd)\..\..\pdcurses_install" >> $GITHUB_ENV
-          } else {
-              Write-Host "Error: Makefile not found!"
-              exit 1
-          }
+          mingw32-make -f Makefile
+          mkdir ../../pdcurses_install
+          cp pdcurses.a ../../pdcurses_install/
+          cp curses.h ../../pdcurses_install/
+          cp panel.h ../../pdcurses_install/
+          # Set the PDCURSES_DIR environment variable using the new environment file method
+          echo "PDCURSES_DIR=$(pwd)/../../pdcurses_install" >> $GITHUB_ENV
 
       # Configure CMake with the correct generator and PDCurses path on Windows
       - name: Configure CMake
         run: |
           if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-            cmake -G "${{ matrix.cmake-generator }}" -DPDCURSES_DIR=${{ env.PDCURSES_DIR }} .
+            cmake -G "${{ matrix.cmake-generator }}" -DPDCURSES_DIR=${{ env.PDCURSES_DIR }} -DCMAKE_CXX_FLAGS="-I${{ env.PDCURSES_DIR }}" .
           else
             cmake -G "${{ matrix.cmake-generator }}" .
           fi
