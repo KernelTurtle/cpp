@@ -3,7 +3,7 @@ name: Build and Release LeetViewer
 on:
   push:
     tags:
-      - 'v*.*.*'   # Trigger workflow on version tags like v1.0.0
+      - "v*.*.*" # Trigger workflow on version tags like v1.0.0
 
 jobs:
   build:
@@ -14,14 +14,14 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
         include:
           - os: ubuntu-latest
-            cmake-generator: 'Unix Makefiles'
-            os-name: 'linux'
+            cmake-generator: "Unix Makefiles"
+            os-name: "linux"
           - os: macos-latest
-            cmake-generator: 'Unix Makefiles'
-            os-name: 'macos'
+            cmake-generator: "Unix Makefiles"
+            os-name: "macos"
           - os: windows-latest
-            cmake-generator: 'MinGW Makefiles'
-            os-name: 'windows'
+            cmake-generator: "MinGW Makefiles"
+            os-name: "windows"
 
     steps:
       - name: Checkout code
@@ -30,7 +30,7 @@ jobs:
       - name: Set up CMake
         uses: jwlawson/actions-setup-cmake@v1
         with:
-          cmake-version: '3.x'
+          cmake-version: "3.x"
 
       # Install dependencies for Ubuntu (Linux)
       - name: Install dependencies on Ubuntu (Linux)
@@ -51,12 +51,20 @@ jobs:
         run: |
           git clone https://github.com/wmcbrine/PDCurses.git
           cd PDCurses/wincon
-          mingw32-make -f Makefile
-          mkdir ../../pdcurses_install
+          mingw32-make -f mingwin32.mak
+          mkdir -p ../../pdcurses_install
           mv pdcurses.a ../../pdcurses_install/
+          # Store the path for later usage
+          echo "::set-env name=PDCURSES_DIR::$(pwd)/../../pdcurses_install"
 
+      # Configure CMake with the correct generator and PDCurses path on Windows
       - name: Configure CMake
-        run: cmake -G "${{ matrix.cmake-generator }}" .
+        run: |
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            cmake -G "${{ matrix.cmake-generator }}" -DPDCURSES_DIR=${{ env.PDCURSES_DIR }} .
+          else
+            cmake -G "${{ matrix.cmake-generator }}" .
+          fi
 
       - name: Build the project
         run: cmake --build . --config Release
@@ -74,8 +82,8 @@ jobs:
         with:
           name: LeetViewer-${{ matrix.os-name }}
           path: |
-            LeetViewer-${{ matrix.os-name }}
-            LeetViewer-${{ matrix.os-name }}.exe
+            ./LeetViewer-${{ matrix.os-name }}
+            ./LeetViewer-${{ matrix.os-name }}.exe
 
   release:
     name: Create GitHub Release
