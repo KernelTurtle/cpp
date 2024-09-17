@@ -20,14 +20,24 @@ add_executable(LeetViewer
 # Check if we are on Windows and use PDCurses instead of ncurses
 if (WIN32)
     # For Windows, use PDCurses
+    set(PDCURSES_DIR "${CMAKE_SOURCE_DIR}/PDCurses/wincon")
     include_directories(${CMAKE_SOURCE_DIR}/PDCurses)
-    add_library(pdcurses STATIC IMPORTED)
-    set_target_properties(pdcurses PROPERTIES
-        IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/PDCurses/wincon/pdcurses.a"
-        INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/PDCurses"
-    )
-    target_link_libraries(LeetViewer pdcurses)
+
+    # Verify if the pdcurses.a file exists
+    if (EXISTS "${PDCURSES_DIR}/pdcurses.a")
+        add_library(pdcurses STATIC IMPORTED)
+        set_target_properties(pdcurses PROPERTIES
+            IMPORTED_LOCATION "${PDCURSES_DIR}/pdcurses.a"
+            INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/PDCurses"
+        )
+        target_link_libraries(LeetViewer pdcurses)
+    else()
+        message(FATAL_ERROR "PDCurses library not found at ${PDCURSES_DIR}/pdcurses.a. Please build PDCurses.")
+    endif()
+
 else()
     # For Unix-based systems, use ncurses
-    target_link_libraries(LeetViewer ncurses)
+    find_package(Curses REQUIRED)
+    include_directories(${CURSES_INCLUDE_DIR})
+    target_link_libraries(LeetViewer ${CURSES_LIBRARIES})
 endif()
