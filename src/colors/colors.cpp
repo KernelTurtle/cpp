@@ -1,7 +1,11 @@
 // Copyright 2024 Keys
 #include "colors/colors.hpp"
 
-#include <ncurses.h>
+#ifdef _WIN32
+    #include <curses.h>
+#else
+    #include <ncurses.h>
+#endif
 
 void InitColors() {
   start_color();

@@ -1,7 +1,11 @@
 // Copyright 2024 Keys
 #include "syntax_highlighting/syntax_highlighting.hpp"
 
-#include <ncurses.h>
+#ifdef _WIN32
+    #include <curses.h>
+#else
+    #include <ncurses.h>
+#endif
 
 #include <regex>  // NOLINT [build/c++11]
 #include <string>

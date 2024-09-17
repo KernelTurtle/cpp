@@ -1,7 +1,11 @@
 // Copyright 2024 Keys
 #include "splash_screen/splash_screen.hpp"
 
-#include <ncurses.h>
+#ifdef _WIN32
+    #include <curses.h>
+#else
+    #include <ncurses.h>
+#endif
 
 #include <chrono>  // NOLINT [build/c++11]
 #include <cmath>
